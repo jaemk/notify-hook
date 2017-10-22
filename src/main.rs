@@ -8,30 +8,15 @@ extern crate git2;
 #[cfg(feature="update")]
 extern crate self_update;
 
+mod payload;
+mod errors;
+
 use std::io::{self, BufRead};
 use clap::{App, Arg, SubCommand, ArgMatches};
-
-error_chain! {
-    foreign_links {
-        Io(io::Error);
-        Git(git2::Error);
-        SelfUpdate(self_update::errors::Error) #[cfg(feature="update")];
-    }
-    errors {}
-}
+use errors::*;
 
 
-struct Payload {
-    //
-}
-impl Payload {
-    fn from(_: &git2::Repository, _: &git2::Commit, _: &[git2::Commit], _: &git2::Oid, _: &git2::Oid) -> Result<Self> {
-        unimplemented!()
-    }
-}
-
-
-fn post(_: &Payload) -> Result<()> {
+fn post(_: &payload::Payload) -> Result<()> {
     unimplemented!()
 }
 
@@ -91,15 +76,17 @@ fn run() -> Result<()> {
         let after_rev = repo.revparse_single(&new)?.id();
         let range = format!("{}..{}", before_rev, after_rev);
         revwalk.push_range(&range)?;
-        let commits: Result<Vec<git2::Commit>> = revwalk.into_iter().map(|rev| {
+        let commits = revwalk.into_iter().map(|rev| {
             let rev = rev?;
             let commit = repo.find_commit(rev)?;
             Ok(commit)
-        }).collect();
-        let commits = commits?;
+        }).collect::<Result<Vec<git2::Commit>>>()?;
 
-        let payload = Payload::from(&repo, &head_commit, &commits, &before_rev, &after_rev)?;
-        post(&payload)?;
+        let config = repo.config()?;
+
+        let payload = payload::Payload::from(&repo, &config, &head_commit, &commits, &before_rev, &after_rev, &reph);
+        println!("{:#?}", payload);
+        //post(&payload)?;
     }
     Ok(())
 }
