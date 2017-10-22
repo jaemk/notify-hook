@@ -21,6 +21,21 @@ error_chain! {
 }
 
 
+struct Payload {
+    //
+}
+impl Payload {
+    fn from(_: &git2::Repository, _: &git2::Commit, _: &[git2::Commit], _: &git2::Oid, _: &git2::Oid) -> Result<Self> {
+        unimplemented!()
+    }
+}
+
+
+fn post(_: &Payload) -> Result<()> {
+    unimplemented!()
+}
+
+
 fn run() -> Result<()> {
     let matches = App::new("notify-hook")
         .version(crate_version!())
@@ -64,14 +79,27 @@ fn run() -> Result<()> {
         if parts.len() != 3 {
             bail!("Expected 3 space separated values, <old-rev> <new-rev> <ref>, got: {}", parts.len());
         }
-        println!("parts: {:?}", parts);
         let (old, new, reph) = (parts[0], parts[1], parts[2]);
+
+        // grab head
+        let head_rev = repo.revparse_single(&reph)?.id();
+        let head_commit = repo.find_commit(head_rev)?;
+
+        // grab commits
         let mut revwalk = repo.revwalk()?;
-        let range = format!("{}..{}", old, new);
+        let before_rev = repo.revparse_single(&old)?.id();
+        let after_rev = repo.revparse_single(&new)?.id();
+        let range = format!("{}..{}", before_rev, after_rev);
         revwalk.push_range(&range)?;
-        for rev in revwalk.into_iter() {
-            println!("{:?}", rev);
-        }
+        let commits: Result<Vec<git2::Commit>> = revwalk.into_iter().map(|rev| {
+            let rev = rev?;
+            let commit = repo.find_commit(rev)?;
+            Ok(commit)
+        }).collect();
+        let commits = commits?;
+
+        let payload = Payload::from(&repo, &head_commit, &commits, &before_rev, &after_rev)?;
+        post(&payload)?;
     }
     Ok(())
 }
