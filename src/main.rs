@@ -1,10 +1,13 @@
 #[macro_use] extern crate clap;
 #[macro_use] extern crate error_chain;
 #[macro_use] extern crate serde_derive;
-#[macro_use] extern crate serde_json;
-extern crate serde_urlencoded;
+extern crate serde_json;
+extern crate serde_qs;
 extern crate serde;
 extern crate git2;
+extern crate reqwest;
+extern crate ring;
+extern crate data_encoding;
 #[cfg(feature="update")]
 extern crate self_update;
 
@@ -16,8 +19,75 @@ use clap::{App, Arg, SubCommand, ArgMatches};
 use errors::*;
 
 
-fn post(_: &payload::Payload) -> Result<()> {
-    unimplemented!()
+pub enum ConfigContentType {
+    UrlEncoded,
+    Json,
+}
+
+
+/// Git repo config values
+///
+/// Set by the following git config options:
+///
+/// ```
+/// notifyhook.reponame
+/// notifyhook.hookurls
+/// notifyhook.secrettoken
+/// notifyhook.contenttype
+/// ```
+pub struct Config {
+    pub repo_name: String,
+    pub hook_urls: Vec<String>,
+    pub secret_token: Option<String>,
+    pub content_type: ConfigContentType,
+}
+impl Config {
+    fn from(config: &git2::Config) -> Result<Self> {
+        let repo_name = config.get_string("notifyhook.reponame").unwrap_or_else(|_| {
+            let origin_url = config.get_string("remote.origin.url").unwrap_or_else(|_| String::new());
+            let mut name = origin_url.trim_right_matches(".git").chars().rev().take_while(|c| *c != '/').collect::<Vec<char>>();
+            name.reverse();
+            name.iter().collect()
+        });
+
+        let hook_urls = config.get_string("notifyhook.hookurls")
+            .unwrap_or_else(|_| String::new())
+            .split(",")
+            .map(String::from)
+            .collect::<Vec<_>>();
+
+        let secret_token = config.get_string("notifyhook.secrettoken").ok();
+
+        let content_type = config.get_string("notifyhook.contenttype").unwrap_or_else(|_| String::from("urlencoded"));
+        let content_type = match content_type.as_ref() {
+            "urlencoded" => ConfigContentType::UrlEncoded,
+            "json" => ConfigContentType::Json,
+            _ => bail!("Invalid notifyhook.contenttype: `{}`", content_type),
+        };
+        Ok(Self {
+            repo_name,
+            hook_urls,
+            secret_token,
+            content_type,
+        })
+    }
+}
+
+
+fn post(config: &Config, payload: &payload::Payload) -> Result<()> {
+    let (data, ct_header) = match config.content_type {
+        ConfigContentType::Json => (serde_json::to_string(payload)?, reqwest::header::ContentType::json()),
+        ConfigContentType::UrlEncoded => (serde_qs::to_string(payload)?, reqwest::header::ContentType::form_url_encoded()),
+    };
+    let client = reqwest::Client::new();
+    for post_url in &config.hook_urls {
+        let res = client.post(post_url)
+            .header(ct_header.clone())
+            .body(data.as_bytes().to_vec())
+            .send()?;
+        println!("res: {:#?}", res);
+    }
+    Ok(())
 }
 
 
@@ -82,11 +152,11 @@ fn run() -> Result<()> {
             Ok(commit)
         }).collect::<Result<Vec<git2::Commit>>>()?;
 
-        let config = repo.config()?;
+        let git_config = repo.config()?;
+        let config = Config::from(&git_config)?;
 
-        let payload = payload::Payload::from(&repo, &config, &head_commit, &commits, &before_rev, &after_rev, &reph);
-        println!("{:#?}", payload);
-        //post(&payload)?;
+        let payload = payload::Payload::from(&config, &head_commit, &commits, &before_rev, &after_rev, &reph);
+        post(&config, &payload)?;
     }
     Ok(())
 }

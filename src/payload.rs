@@ -1,5 +1,5 @@
 use git2;
-use errors::*;
+use {Config};
 
 
 #[derive(Debug, Serialize)]
@@ -14,8 +14,7 @@ pub struct Payload {
     pub pusher: User,
 }
 impl Payload {
-    pub fn from(repo: &git2::Repository,
-                config: &git2::Config,
+    pub fn from(config: &Config,
                 head_commit: &git2::Commit,
                 commits: &[git2::Commit],
                 before: &git2::Oid,
@@ -42,8 +41,8 @@ pub struct Commit {
     pub timestamp: String,
     pub author: User,
     pub committer: User,
-    pub added: Vec<()>,
-    pub removed: Vec<()>,
+    pub added: Vec<String>,
+    pub removed: Vec<String>,
     pub modified: Vec<String>,
 }
 impl Commit {
@@ -55,6 +54,7 @@ impl Commit {
             timestamp: commit.time().seconds().to_string(),
             author: User::from(&commit.author()),
             committer: User::from(&commit.committer()),
+            // TODO: Populate these diff lists
             added: vec![],
             removed: vec![],
             modified: vec![],
@@ -83,12 +83,9 @@ pub struct Repo {
     pub name: String,
 }
 impl Repo {
-    pub fn from(config: &git2::Config) -> Self {
-        let origin_url = config.get_string("remote.origin.url").unwrap_or_else(|_| String::new());
-        let mut name = origin_url.trim_right_matches(".git").chars().rev().take_while(|c| *c != '/').collect::<Vec<char>>();
-        name.reverse();
+    pub fn from(config: &Config) -> Self {
         Self {
-            name: name.iter().collect(),
+            name: config.repo_name.clone(),
         }
     }
 }
