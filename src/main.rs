@@ -163,7 +163,7 @@ fn run() -> Result<()> {
         }
 
         // grab head
-        let head_rev = repo.revparse_single(&reph)?.id();
+        let head_rev = repo.revparse_single(&ref_)?.id();
         let head_commit = repo.find_commit(head_rev)?;
 
         // grab commits
@@ -181,7 +181,7 @@ fn run() -> Result<()> {
         let git_config = repo.config()?;
         let config = Config::from(&git_config)?;
 
-        let payload = payload::Payload::from(&config, &head_commit, &commits, &before_rev, &after_rev, &reph);
+        let payload = payload::Payload::from(&repo, &config, &head_commit, &commits, &before_rev, &after_rev, &ref_);
         post(&config, &payload)?;
     }
     Ok(())
