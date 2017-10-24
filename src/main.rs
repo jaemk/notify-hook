@@ -156,7 +156,11 @@ fn run() -> Result<()> {
         if parts.len() != 3 {
             bail!("Expected 3 space separated values, <old-rev> <new-rev> <ref>, got: {}", parts.len());
         }
-        let (old, new, reph) = (parts[0], parts[1], parts[2]);
+        let (old, new, ref_) = (parts[0], parts[1], parts[2]);
+        if [old, new].iter().any(|s| s.chars().all(|c| c == '0')) {
+            println!("Ignoring hook since one of the SHA's is zero\nOld: {}\nNew: {}", old, new);
+            continue
+        }
 
         // grab head
         let head_rev = repo.revparse_single(&reph)?.id();
