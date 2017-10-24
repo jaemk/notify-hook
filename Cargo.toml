@@ -2,6 +2,23 @@
 name = "notify-hook"
 version = "0.1.0"
 authors = ["James Kominick <james.kominick@gmail.com>"]
+license = "MIT"
+description = "GitHub PushEvent-like git post-receive hook"
+repository = "https://github.com/jaemk/notify-hook"
+readme = "README.md"
+keywords = ["cli"]
+categories = ["command-line-utilities", "development-tools"]
+exclude = [
+    "ci/",
+]
+
+[[bin]]
+name = "notify-hook"
+path = "src/main.rs"
+doc = false
+
+[badges]
+travis-ci = { repository = "jaemk/notify-hook", branch = "master" }
 
 [dependencies]
 clap = "2"
