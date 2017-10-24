@@ -1,6 +1,6 @@
 [package]
 name = "notify-hook"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["James Kominick <james.kominick@gmail.com>"]
 license = "MIT"
 description = "GitHub PushEvent-like git post-receive hook"

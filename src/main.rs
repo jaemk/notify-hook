@@ -117,8 +117,10 @@ fn run() -> Result<()> {
     let matches = App::new("notify-hook")
         .version(crate_version!())
         .author("James K. <james.kominick@gmail.com>")
-        .about("Reposity: https://github.com/jaemk/notify-hook\n\
-                Git post-receive hook to send GitHub PushEvent-formatted http requests")
+        .about("Git post-receive hook to send GitHub PushEvent-formatted http requests.\n\
+                Reposity: https://github.com/jaemk/notify-hook\n\
+                Expects stdin lines formatted as `<old-sha> <new-sha> <ref>`. See \
+                https://git-scm.com/docs/githooks#post-receive")
         .subcommand(SubCommand::with_name("self")
                     .about("Self referential things")
                     .subcommand(SubCommand::with_name("update")
