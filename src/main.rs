@@ -5,6 +5,7 @@ extern crate serde_json;
 extern crate serde_qs;
 extern crate serde;
 extern crate git2;
+#[macro_use] extern crate hyper;
 extern crate reqwest;
 extern crate ring;
 extern crate data_encoding;
@@ -39,7 +40,7 @@ pub enum ConfigContentType {
 pub struct Config {
     pub repo_name: String,
     pub hook_urls: Vec<String>,
-    pub secret_token: Option<String>,
+    pub secret_token: Option<Vec<u8>>,
     pub content_type: ConfigContentType,
 }
 impl Config {
@@ -57,7 +58,13 @@ impl Config {
             .map(String::from)
             .collect::<Vec<_>>();
 
-        let secret_token = config.get_string("notifyhook.secrettoken").ok();
+        let secret_token = match config.get_string("notifyhook.secrettoken").ok() {
+            None => None,
+            Some(s) => {
+                let s = s.to_uppercase();
+                Some(data_encoding::hex::decode(s.as_bytes())?)
+            }
+        };
 
         let content_type = config.get_string("notifyhook.contenttype").unwrap_or_else(|_| String::from("urlencoded"));
         let content_type = match content_type.as_ref() {
@@ -75,18 +82,31 @@ impl Config {
 }
 
 
+header! { (XHubSignature, "X-Hub-Signature") => [String] }
+
 fn post(config: &Config, payload: &payload::Payload) -> Result<()> {
     let (data, ct_header) = match config.content_type {
         ConfigContentType::Json => (serde_json::to_string(payload)?, reqwest::header::ContentType::json()),
         ConfigContentType::UrlEncoded => (serde_qs::to_string(payload)?, reqwest::header::ContentType::form_url_encoded()),
     };
+    let data = data.as_bytes().to_vec();
+    let auth_sig = config.secret_token.as_ref().map(|token_bytes| {
+        let s_key = ring::hmac::SigningKey::new(&ring::digest::SHA1, &token_bytes);
+        let sig = ring::hmac::sign(&s_key, &data);
+        data_encoding::hex::encode(sig.as_ref())
+    });
+    // println!("playload: {:#?}", payload);
+    // println!("sig: {:#?}", auth_sig);
     let client = reqwest::Client::new();
     for post_url in &config.hook_urls {
-        let res = client.post(post_url)
-            .header(ct_header.clone())
-            .body(data.as_bytes().to_vec())
+        let mut post = client.post(post_url);
+        if let Some(ref auth_sig) = auth_sig {
+            post.header(XHubSignature(auth_sig.clone()));
+        }
+        let res = post.header(ct_header.clone())
+            .body(data.clone())
             .send()?;
-        println!("res: {:#?}", res);
+        res.error_for_status()?;
     }
     Ok(())
 }
