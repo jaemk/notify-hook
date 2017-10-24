@@ -8,6 +8,7 @@ extern crate git2;
 extern crate reqwest;
 extern crate ring;
 extern crate data_encoding;
+extern crate chrono;
 #[cfg(feature="update")]
 extern crate self_update;
 

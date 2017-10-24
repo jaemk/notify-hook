@@ -1,4 +1,5 @@
 use git2;
+use chrono::{self, TimeZone};
 use {Config};
 use errors::*;
 
@@ -49,11 +50,12 @@ pub struct Commit {
 }
 impl Commit {
     pub fn from(repo: &git2::Repository, commit: &git2::Commit) -> Self {
+        let dt = chrono::Local.timestamp(commit.time().seconds(), 0);
         let mut commit_info = Self {
             id: format!("{}", commit.id()),
             tree_id: format!("{}", commit.tree_id()),
             message: commit.message().map(String::from).unwrap_or_else(|| String::new()),
-            timestamp: commit.time().seconds().to_string(),
+            timestamp: dt.to_rfc2822(),
             author: User::from(&commit.author()),
             committer: User::from(&commit.committer()),
             added: vec![],
