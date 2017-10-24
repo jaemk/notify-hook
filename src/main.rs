@@ -55,6 +55,7 @@ impl Config {
         let hook_urls = config.get_string("notifyhook.hookurls")
             .unwrap_or_else(|_| String::new())
             .split(",")
+            .filter(|s| !s.is_empty())
             .map(String::from)
             .collect::<Vec<_>>();
 
