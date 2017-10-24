@@ -1,5 +1,6 @@
 use git2;
 use {Config};
+use errors::*;
 
 
 #[derive(Debug, Serialize)]
@@ -14,18 +15,19 @@ pub struct Payload {
     pub pusher: User,
 }
 impl Payload {
-    pub fn from(config: &Config,
+    pub fn from(repo: &git2::Repository,
+                config: &Config,
                 head_commit: &git2::Commit,
                 commits: &[git2::Commit],
                 before: &git2::Oid,
                 after: &git2::Oid,
-                reph: &str) -> Self {
+                ref_: &str) -> Self {
         Self {
-            ref_: reph.to_string(),
+            ref_: ref_.to_string(),
             before: format!("{}", before),
             after: format!("{}", after),
-            commits: commits.iter().map(Commit::from).collect(),
-            head_commit: Commit::from(head_commit),
+            commits: commits.iter().map(|c| Commit::from(repo, c)).collect(),
+            head_commit: Commit::from(repo, head_commit),
             repository: Repo::from(config),
             pusher: User::from(&head_commit.committer()),
         }
@@ -46,19 +48,46 @@ pub struct Commit {
     pub modified: Vec<String>,
 }
 impl Commit {
-    pub fn from(commit: &git2::Commit) -> Self {
-        Self {
+    pub fn from(repo: &git2::Repository, commit: &git2::Commit) -> Self {
+        let mut commit_info = Self {
             id: format!("{}", commit.id()),
             tree_id: format!("{}", commit.tree_id()),
             message: commit.message().map(String::from).unwrap_or_else(|| String::new()),
             timestamp: commit.time().seconds().to_string(),
             author: User::from(&commit.author()),
             committer: User::from(&commit.committer()),
-            // TODO: Populate these diff lists
             added: vec![],
             removed: vec![],
             modified: vec![],
+        };
+        commit_info.try_add_modified(repo, commit).ok();
+        commit_info
+    }
+
+    /// Try to add Added, Removed, Modified files to the `added`, `removed`, `modified` Vecs
+    ///
+    /// Fails if the `Commit`'s parent can't be found, any commits cannot be converted to `Tree`s,
+    /// or the diff fails.
+    fn try_add_modified(&mut self, repo: &git2::Repository, commit: &git2::Commit) -> Result<()> {
+        let parent = commit.parent(0)?;
+        let from_tree = parent.as_object().peel(git2::ObjectType::Tree)?;
+        let from_tree = from_tree.as_tree().ok_or_else(|| "not a tree")?;
+
+        let to_tree = commit.as_object().peel(git2::ObjectType::Tree)?;
+        let to_tree = to_tree.as_tree().ok_or_else(|| "not a tree")?;
+
+        let diff = repo.diff_tree_to_tree(Some(&from_tree), Some(&to_tree), None)?;
+        for delta in diff.deltas() {
+            let path = delta.new_file().path().and_then(::std::path::Path::to_str).map(String::from).unwrap_or_else(|| String::new());
+            use git2::Delta::*;
+            match delta.status() {
+                Added => self.added.push(path),
+                Deleted => self.removed.push(path),
+                Modified | Renamed => self.modified.push(path),
+                _ => continue,
+            }
         }
+        Ok(())
     }
 }
 
