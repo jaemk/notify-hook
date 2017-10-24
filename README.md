@@ -4,7 +4,7 @@
 
 > Git post-receive hook to send GitHub PushEvent-formatted requests
 
-Note, some payload fields are missing because I'm lazy. The exact payload format can be found in [`payload.rs`](https://github.com/jaemk/notify-hook/blob/master/src/payload.rs).
+Note, some payload fields are missing. The exact payload format can be found in [`payload.rs`](https://github.com/jaemk/notify-hook/blob/master/src/payload.rs).
 
 
 **notifyhook.reponame**
