@@ -18,7 +18,7 @@ main() {
     test -f Cargo.lock || cargo generate-lockfile
 
     # TODO Update this to build the artifacts that matter to you
-    cross rustc --bin notify-hook --target $TARGET --release -- -C lto
+    cross rustc --bin notify-hook --target $TARGET --release --features update -- -C lto
 
     # TODO Update this to package the right artifacts
     cp target/$TARGET/release/notify-hook $stage/
