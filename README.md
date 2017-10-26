@@ -9,25 +9,43 @@ Note, some payload fields are missing. The exact payload format can be found in 
 See [`releases`](https://github.com/jaemk/notify-hook/releases) for binaries, or build from source (see `Releases` section below).
 If you've installed a pre-compiled binary, you can update to the latest release via `notify-hook self update`.
 
+----
 
-**notifyhook.reponame**
+**notifyhook.repo-name**
 
 Optional: Repository name to use. Defaults to: ` basename -s .git `git config --get remote.origin.url` `
 
 
-**notifyhook.hookurls**
+**notifyhook.repo-description**
 
-Comma separated list of urls to post content to
+Optional: Repository description to use. Defaults to: blank
 
 
-**notifyhook.secrettoken**
+**notifyhook.repo-owner-name**
+
+Optional: Repository owner name to use. Defaults to: blank
+
+
+**notifyhook.repo-owner-email**
+
+Optional: Repository owner email to use. Defaults to: blank
+
+
+**notifyhook.hook-urls**
+
+Comma separated list of urls to post content to.
+
+
+**notifyhook.secret-token**
 
 Optional: Hex encoded secret token used to generate a [GitHub X-Hub-Signature](https://developer.github.com/webhooks/securing/) header.
 
 
-**notifyhook.contenttype**
+**notifyhook.content-type**
 
-Content type to send payload as. Defaults to `urlencoded`. Options:
+Content type to send payload as. Defaults to `urlencoded`.
+
+Options:
 
 - `urlencoded`: (Default) Post as `application/x-www-form-urlencoded`
 - `json`: Post as `application/json`
