@@ -11,24 +11,34 @@ If you've installed a pre-compiled binary, you can update to the latest release 
 
 ----
 
+### Configuration Options
+
+> Note: options are set (from within the git project) with:
+>
+> `git config notifyhook.hook-urls "https://httpbin.org/post,https://httpbin.org/post"`
+
 **notifyhook.repo-name**
 
-Optional: Repository name to use. Defaults to: ` basename -s .git `git config --get remote.origin.url` `
+Optional: Repository name to use. Defaults to:
+
+```
+basename -s .git `git config --get remote.origin.url`
+```
 
 
 **notifyhook.repo-description**
 
-Optional: Repository description to use. Defaults to: blank
+Optional: Repository description to use. Defaults to blank
 
 
 **notifyhook.repo-owner-name**
 
-Optional: Repository owner name to use. Defaults to: blank
+Optional: Repository owner name to use. Defaults to blank
 
 
 **notifyhook.repo-owner-email**
 
-Optional: Repository owner email to use. Defaults to: blank
+Optional: Repository owner email to use. Defaults to blank
 
 
 **notifyhook.hook-urls**
@@ -55,6 +65,7 @@ Options:
 
 - Install [`rust`](https://rustup.rs)
 - `cargo build`
+- `echo "6b1bc10c d7b4c1baba master" | cargo run -- --debug`
 
 
 ## Releases
