@@ -39,27 +39,36 @@ pub enum ConfigContentType {
 /// ```
 pub struct Config {
     pub repo_name: String,
+    pub repo_description: String,
+    pub repo_owner_name: String,
+    pub repo_owner_email: String,
     pub hook_urls: Vec<String>,
     pub secret_token: Option<Vec<u8>>,
     pub content_type: ConfigContentType,
 }
 impl Config {
-    fn from(config: &git2::Config) -> Result<Self> {
-        let repo_name = config.get_string("notifyhook.reponame").unwrap_or_else(|_| {
+    fn from(repo: &git2::Repository) -> Result<Self> {
+        let config = repo.config()?;
+        let repo_name = config.get_string("notifyhook.repo-name").unwrap_or_else(|_| {
             let origin_url = config.get_string("remote.origin.url").unwrap_or_else(|_| String::new());
             let mut name = origin_url.trim_right_matches(".git").chars().rev().take_while(|c| *c != '/').collect::<Vec<char>>();
             name.reverse();
             name.iter().collect()
         });
 
-        let hook_urls = config.get_string("notifyhook.hookurls")
+        let repo_description = config.get_string("notifyhook.repo-description").unwrap_or_else(|_| String::new());
+        let repo_owner_name = config.get_string("notifyhook.repo-owner-name").unwrap_or_else(|_| String::new());
+        let repo_owner_email = config.get_string("notifyhook.repo-owner-email").unwrap_or_else(|_| String::new());
+
+        let hook_urls = config.get_string("notifyhook.hook-urls")
             .unwrap_or_else(|_| String::new())
             .split(",")
+            .map(str::trim)
             .filter(|s| !s.is_empty())
             .map(String::from)
             .collect::<Vec<_>>();
 
-        let secret_token = match config.get_string("notifyhook.secrettoken").ok() {
+        let secret_token = match config.get_string("notifyhook.secret-token").ok() {
             None => None,
             Some(s) => {
                 let s = s.to_uppercase();
@@ -67,14 +76,17 @@ impl Config {
             }
         };
 
-        let content_type = config.get_string("notifyhook.contenttype").unwrap_or_else(|_| String::from("urlencoded"));
+        let content_type = config.get_string("notifyhook.content-type").unwrap_or_else(|_| String::from("urlencoded"));
         let content_type = match content_type.as_ref() {
             "urlencoded" => ConfigContentType::UrlEncoded,
             "json" => ConfigContentType::Json,
-            _ => bail!("Invalid notifyhook.contenttype: `{}`", content_type),
+            _ => bail!("Invalid notifyhook.content-type: `{}`", content_type),
         };
         Ok(Self {
             repo_name,
+            repo_description,
+            repo_owner_name,
+            repo_owner_email,
             hook_urls,
             secret_token,
             content_type,
@@ -85,7 +97,7 @@ impl Config {
 
 header! { (XHubSignature, "X-Hub-Signature") => [String] }
 
-fn post(config: &Config, payload: &payload::Payload) -> Result<()> {
+fn post(config: &Config, payload: &payload::Payload, debug: bool) -> Result<()> {
     let (data, ct_header) = match config.content_type {
         ConfigContentType::Json => (serde_json::to_string(payload)?, reqwest::header::ContentType::json()),
         ConfigContentType::UrlEncoded => (serde_qs::to_string(payload)?, reqwest::header::ContentType::form_url_encoded()),
@@ -96,10 +108,12 @@ fn post(config: &Config, payload: &payload::Payload) -> Result<()> {
         let sig = ring::hmac::sign(&s_key, &data);
         data_encoding::hex::encode(sig.as_ref())
     });
-    // println!("playload: {:#?}", payload);
-    // println!("sig: {:#?}", auth_sig);
+
+    if debug { println!("{:#?}", payload); }
+
     let client = reqwest::Client::new();
     for post_url in &config.hook_urls {
+        println!("Posting PushEvent to: {}", post_url);
         let mut post = client.post(post_url);
         if let Some(ref auth_sig) = auth_sig {
             post.header(XHubSignature(auth_sig.clone()));
@@ -137,6 +151,11 @@ fn run() -> Result<()> {
                              .short("q")
                              .required(false)
                              .takes_value(false))))
+        .arg(Arg::with_name("debug")
+             .help("Print out payload data before posting")
+             .long("debug")
+             .required(false)
+             .takes_value(false))
         .get_matches();
 
     // Set ssl cert env. vars to make sure openssl can find required files.
@@ -192,11 +211,10 @@ fn run() -> Result<()> {
             Ok(commit)
         }).collect::<Result<Vec<git2::Commit>>>()?;
 
-        let git_config = repo.config()?;
-        let config = Config::from(&git_config)?;
+        let config = Config::from(&repo)?;
 
         let payload = payload::Payload::from(&repo, &config, &head_commit, &commits, &before_rev, &after_rev, &ref_);
-        post(&config, &payload)?;
+        post(&config, &payload, matches.is_present("debug"))?;
     }
     Ok(())
 }

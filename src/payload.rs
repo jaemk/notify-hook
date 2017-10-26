@@ -10,6 +10,7 @@ pub struct Payload {
     pub ref_: String,
     pub before: String,
     pub after: String,
+    pub size: usize,
     pub commits: Vec<Commit>,
     pub head_commit: Commit,
     pub repository: Repo,
@@ -23,11 +24,13 @@ impl Payload {
                 before: &git2::Oid,
                 after: &git2::Oid,
                 ref_: &str) -> Self {
+        let commits = commits.iter().map(|c| Commit::from(repo, c)).collect::<Vec<_>>();
         Self {
             ref_: ref_.to_string(),
             before: format!("{}", before),
             after: format!("{}", after),
-            commits: commits.iter().map(|c| Commit::from(repo, c)).collect(),
+            size: commits.len(),
+            commits: commits,
             head_commit: Commit::from(repo, head_commit),
             repository: Repo::from(config),
             pusher: User::from(&head_commit.committer()),
@@ -112,11 +115,18 @@ impl User {
 #[derive(Debug, Serialize)]
 pub struct Repo {
     pub name: String,
+    pub description: String,
+    pub owner: User,
 }
 impl Repo {
     pub fn from(config: &Config) -> Self {
         Self {
             name: config.repo_name.clone(),
+            description: config.repo_description.clone(),
+            owner: User {
+                name: config.repo_owner_name.clone(),
+                email: config.repo_owner_email.clone(),
+            }
         }
     }
 }
