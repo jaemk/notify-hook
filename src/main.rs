@@ -139,6 +139,18 @@ fn run() -> Result<()> {
                              .takes_value(false))))
         .get_matches();
 
+    // Set ssl cert env. vars to make sure openssl can find required files.
+    // Required since we're posting things with `reqwest`
+    #[cfg(target_os="linux")]
+    {
+        if ::std::env::var_os("SSL_CERT_FILE").is_none() {
+            ::std::env::set_var("SSL_CERT_FILE", "/etc/ssl/certs/ca-certificates.crt");
+        }
+        if ::std::env::var_os("SSL_CERT_DIR").is_none() {
+            ::std::env::set_var("SSL_CERT_DIR", "/etc/ssl/certs");
+        }
+    }
+
     if let Some(matches) = matches.subcommand_matches("self") {
         match matches.subcommand() {
             ("update", Some(matches)) => {
