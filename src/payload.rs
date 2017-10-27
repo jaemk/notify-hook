@@ -83,7 +83,10 @@ impl Commit {
 
         let diff = repo.diff_tree_to_tree(Some(&from_tree), Some(&to_tree), None)?;
         for delta in diff.deltas() {
-            let path = delta.new_file().path().and_then(::std::path::Path::to_str).map(String::from).unwrap_or_else(|| String::new());
+            let path = delta.new_file().path()
+                .and_then(::std::path::Path::to_str)
+                .map(String::from)
+                .unwrap_or_else(|| String::new());
             use git2::Delta::*;
             match delta.status() {
                 Added => self.added.push(path),

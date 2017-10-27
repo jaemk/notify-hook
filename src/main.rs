@@ -68,8 +68,13 @@ impl Config {
         let secret_token = match config.get_string("notifyhook.secret-token").ok() {
             None => None,
             Some(s) => {
-                let s = s.to_uppercase();
-                Some(data_encoding::hex::decode(s.as_bytes())?)
+                let s = s.trim().to_uppercase();
+                if s.is_empty() { None }
+                else {
+                    let token = data_encoding::hex::decode(s.as_bytes())
+                        .chain_err(|| "notifyhook.secret-token is invalid hex")?;
+                    Some(token)
+                }
             }
         };
 
@@ -178,6 +183,7 @@ fn run() -> Result<()> {
     }
 
     let repo = git2::Repository::open_from_env()?;
+    let config = Config::from(&repo)?;
 
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
@@ -207,8 +213,6 @@ fn run() -> Result<()> {
             let commit = repo.find_commit(rev)?;
             Ok(commit)
         }).collect::<Result<Vec<git2::Commit>>>()?;
-
-        let config = Config::from(&repo)?;
 
         let payload = payload::Payload::from(&repo, &config, &head_commit, &commits, &before_rev, &after_rev, &ref_);
         post(&config, &payload, matches.is_present("debug"))?;
