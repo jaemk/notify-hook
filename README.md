@@ -19,26 +19,22 @@ If you've installed a pre-compiled binary, you can update to the latest release 
 
 **notifyhook.repo-name**
 
-Optional: Repository name to use. Defaults to:
-
-```
-basename -s .git `git config --get remote.origin.url`
-```
+Repository name to use. Defaults to blank
 
 
 **notifyhook.repo-description**
 
-Optional: Repository description to use. Defaults to blank
+Repository description to use. Defaults to blank
 
 
 **notifyhook.repo-owner-name**
 
-Optional: Repository owner name to use. Defaults to blank
+Repository owner name to use. Defaults to blank
 
 
 **notifyhook.repo-owner-email**
 
-Optional: Repository owner email to use. Defaults to blank
+Repository owner email to use. Defaults to blank
 
 
 **notifyhook.hook-urls**

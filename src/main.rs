@@ -32,10 +32,13 @@ pub enum ConfigContentType {
 /// Set by the following git config options:
 ///
 /// ```
-/// notifyhook.reponame
-/// notifyhook.hookurls
-/// notifyhook.secrettoken
-/// notifyhook.contenttype
+/// notifyhook.repo-name
+/// notifyhook.repo-description
+/// notifyhook.repo-owner-name
+/// notifyhook.repo-owner-email
+/// notifyhook.hook-urls
+/// notifyhook.secret-token
+/// notifyhook.content-type
 /// ```
 pub struct Config {
     pub repo_name: String,
@@ -49,13 +52,7 @@ pub struct Config {
 impl Config {
     fn from(repo: &git2::Repository) -> Result<Self> {
         let config = repo.config()?;
-        let repo_name = config.get_string("notifyhook.repo-name").unwrap_or_else(|_| {
-            let origin_url = config.get_string("remote.origin.url").unwrap_or_else(|_| String::new());
-            let mut name = origin_url.trim_right_matches(".git").chars().rev().take_while(|c| *c != '/').collect::<Vec<char>>();
-            name.reverse();
-            name.iter().collect()
-        });
-
+        let repo_name = config.get_string("notifyhook.repo-name").unwrap_or_else(|_| String::new());
         let repo_description = config.get_string("notifyhook.repo-description").unwrap_or_else(|_| String::new());
         let repo_owner_name = config.get_string("notifyhook.repo-owner-name").unwrap_or_else(|_| String::new());
         let repo_owner_email = config.get_string("notifyhook.repo-owner-email").unwrap_or_else(|_| String::new());
