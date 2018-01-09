@@ -18,6 +18,7 @@ mod errors;
 
 use std::io::{self, BufRead};
 use clap::{App, Arg, SubCommand, ArgMatches};
+use data_encoding::HEXUPPER;
 use errors::*;
 
 
@@ -83,7 +84,7 @@ impl Config {
                 if s.is_empty() { None }
                 else {
                     let s = s.to_uppercase();
-                    let token = data_encoding::hex::decode(s.as_bytes())
+                    let token = HEXUPPER.decode(s.as_bytes())
                         .chain_err(|| "notifyhook.secret-token is invalid hex")?;
                     Some(token)
                 }
@@ -118,7 +119,7 @@ fn post(config: &Config, payload: &payload::Payload, debug: bool) -> Result<()> 
     let auth_sig = config.secret_token.as_ref().map(|token_bytes| {
         let s_key = ring::hmac::SigningKey::new(&ring::digest::SHA1, &token_bytes);
         let sig = ring::hmac::sign(&s_key, &data);
-        data_encoding::hex::encode(sig.as_ref())
+        HEXUPPER.encode(sig.as_ref())
     });
 
     if debug { println!("{:#?}", payload); }

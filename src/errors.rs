@@ -14,7 +14,7 @@ error_chain! {
         Json(serde_json::Error);
         UrlEncoded(serde_qs::Error);
         Reqwest(reqwest::Error);
-        Decoding(data_encoding::decode::Error);
+        Decoding(data_encoding::DecodeError);
         SelfUpdate(self_update::errors::Error) #[cfg(feature="update")];
     }
     errors {}

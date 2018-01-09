@@ -31,7 +31,7 @@ serde_json = "1"
 serde_qs = "0.2"
 git2 = "0.6"
 ring = "0.12"
-data-encoding = "1"
+data-encoding = "2"
 chrono = "0.4"
 self_update = { version = "0.4", optional = true }
 
