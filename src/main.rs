@@ -25,6 +25,17 @@ pub enum ConfigContentType {
     UrlEncoded,
     Json,
 }
+impl std::str::FromStr for ConfigContentType {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self> {
+        use ConfigContentType::*;
+        Ok(match s {
+            "urlencoded"    => UrlEncoded,
+            "json"          => Json,
+            _ => bail!("Invalid notifyhook.content-type: `{}`", s),
+        })
+    }
+}
 
 
 /// Git repo config values
@@ -78,12 +89,10 @@ impl Config {
             }
         };
 
-        let content_type = config.get_string("notifyhook.content-type").unwrap_or_else(|_| String::from("urlencoded"));
-        let content_type = match content_type.as_ref() {
-            "urlencoded" => ConfigContentType::UrlEncoded,
-            "json" => ConfigContentType::Json,
-            _ => bail!("Invalid notifyhook.content-type: `{}`", content_type),
-        };
+        let content_type = config.get_string("notifyhook.content-type")
+            .unwrap_or_else(|_| String::from("urlencoded"))
+            .parse::<ConfigContentType>()?;
+
         Ok(Self {
             repo_name,
             repo_description,
