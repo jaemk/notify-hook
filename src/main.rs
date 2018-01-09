@@ -79,9 +79,10 @@ impl Config {
         let secret_token = match config.get_string("notifyhook.secret-token").ok() {
             None => None,
             Some(s) => {
-                let s = s.trim().to_uppercase();
+                let s = s.trim();
                 if s.is_empty() { None }
                 else {
+                    let s = s.to_uppercase();
                     let token = data_encoding::hex::decode(s.as_bytes())
                         .chain_err(|| "notifyhook.secret-token is invalid hex")?;
                     Some(token)
@@ -110,8 +111,8 @@ header! { (XHubSignature, "X-Hub-Signature") => [String] }
 
 fn post(config: &Config, payload: &payload::Payload, debug: bool) -> Result<()> {
     let (data, ct_header) = match config.content_type {
-        ConfigContentType::Json => (serde_json::to_string(payload)?, reqwest::header::ContentType::json()),
-        ConfigContentType::UrlEncoded => (serde_qs::to_string(payload)?, reqwest::header::ContentType::form_url_encoded()),
+        ConfigContentType::Json         => (serde_json::to_string(payload)?, reqwest::header::ContentType::json()),
+        ConfigContentType::UrlEncoded   => (serde_qs::to_string(payload)?, reqwest::header::ContentType::form_url_encoded()),
     };
     let data = data.as_bytes().to_vec();
     let auth_sig = config.secret_token.as_ref().map(|token_bytes| {
@@ -197,7 +198,7 @@ fn run() -> Result<()> {
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
         let line = line?;
-        let parts = line.split(" ").collect::<Vec<_>>();
+        let parts = line.trim().split(" ").collect::<Vec<_>>();
         if parts.len() != 3 {
             bail!("Expected 3 space separated values, <old-rev> <new-rev> <ref>, got: {}", parts.len());
         }
