@@ -111,18 +111,22 @@ impl Config {
 header! { (XHubSignature, "X-Hub-Signature") => [String] }
 
 fn post(config: &Config, payload: &payload::Payload, debug: bool) -> Result<()> {
-    let (data, ct_header) = match config.content_type {
+    let (data_str, ct_header) = match config.content_type {
         ConfigContentType::Json         => (serde_json::to_string(payload)?, reqwest::header::ContentType::json()),
         ConfigContentType::UrlEncoded   => (serde_qs::to_string(payload)?, reqwest::header::ContentType::form_url_encoded()),
     };
-    let data = data.as_bytes().to_vec();
+    let data = data_str.as_bytes().to_vec();
     let auth_sig = config.secret_token.as_ref().map(|token_bytes| {
         let s_key = ring::hmac::SigningKey::new(&ring::digest::SHA1, &token_bytes);
         let sig = ring::hmac::sign(&s_key, &data);
         HEXUPPER.encode(sig.as_ref())
     });
 
-    if debug { println!("{:#?}", payload); }
+    if debug {
+        println!("{:#?}", payload);
+        println!("---------------------");
+        println!("{}", data_str);
+    }
 
     let client = reqwest::Client::new();
     for post_url in &config.hook_urls {
