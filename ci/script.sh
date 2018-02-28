@@ -12,6 +12,7 @@ main() {
     #fi
 
     #cross test --target $TARGET
+    cargo test --features integration_tests
     cross test --target $TARGET --release --features update
 
     #cross run --target $TARGET
